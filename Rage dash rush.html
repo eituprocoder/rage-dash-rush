@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rage Dash Rush</title>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ea;
+            --neon-red: #ff3333;
+            --neon-blue: #3388ff;
+            --bg-color: #080a14;
+            --panel-bg: rgba(8, 10, 20, 0.8);
+        }
+
+        * { box-sizing: border-box; font-family: 'Courier New', Courier, monospace; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            background-image: linear-gradient(0deg, #000000 0%, #0a0a2a 100%);
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            text-align: center;
+        }
+        .active { display: block; }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: transparent;
+            border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-size: 1.2rem;
+            border-radius: 8px;
+            outline: none;
+            text-align: center;
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+        
+        select option { background-color: var(--bg-color); }
+
+        input::placeholder { color: rgba(0, 243, 255, 0.5); }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: transparent;
+            color: var(--neon-pink);
+            border: 2px solid var(--neon-pink);
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 10px rgba(255, 0, 234, 0.5);
+        }
+
+        button:active {
+            background: var(--neon-pink);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--neon-pink);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-cyan { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+        .btn-cyan:active { background: var(--neon-cyan); color: var(--bg-color); box-shadow: 0 0 20px var(--neon-cyan); }
+
+        .btn-red { color: var(--neon-red); border-color: var(--neon-red); box-shadow: 0 0 10px rgba(255, 51, 51, 0.5); }
+        .btn-red:active { background: var(--neon-red); color: var(--bg-color); box-shadow: 0 0 20px var(--neon-red); }
+
+        .btn-blue { color: var(--neon-blue); border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(51, 136, 255, 0.5); }
+        .btn-blue:active { background: var(--neon-blue); color: var(--bg-color); box-shadow: 0 0 20px var(--neon-blue); }
+
+        /* Stats Panel */
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .stats-panel span { color: gold; font-weight: bold; }
+
+        /* Lobby Styles */
+        #qr-container {
+            margin: 20px auto;
+            background: white;
+            padding: 10px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0 0 20px var(--neon-cyan);
+        }
+        
+        .team-selection {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .player-list {
+            text-align: left;
+            margin-top: 20px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+        }
+
+        /* Game Styles */
+        .player-card {
+            border: 1px solid #555;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            text-align: left;
+            position: relative;
+        }
+        .player-card.team-red { border-color: var(--neon-red); box-shadow: inset 0 0 10px rgba(255,51,51,0.2); }
+        .player-card.team-blue { border-color: var(--neon-blue); box-shadow: inset 0 0 10px rgba(51,136,255,0.2); }
+        
+        .health-bar-bg { background: #333; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px; border: 1px solid #555;}
+        .health-bar-fill { background: #00ff00; height: 100%; transition: width 0.3s; }
+        
+        .power-bar-bg { background: #333; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px;}
+        .power-bar-fill { background: var(--neon-cyan); height: 100%; width: 0%; transition: width 0.1s; }
+
+        .game-controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #battle-log {
+            height: 100px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            color: #aaa;
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px dashed var(--neon-pink);
+            background: rgba(0,0,0,0.5);
+        }
+
+        .dead { opacity: 0.4; filter: grayscale(100%); }
+        
+        #end-title { font-size: 2.5rem; }
+        .win-text { color: #00ff00; text-shadow: 0 0 20px #00ff00; }
+        .lose-text { color: #ff0000; text-shadow: 0 0 20px #ff0000; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen" class="screen active">
+        <h1>Rage Dash<br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">Rush</span></h1>
+        
+        <div class="stats-panel">
+            <div>🏆 Trofeos: <span id="menu-trophies">0</span></div>
+            <div>🔥 Racha: <span id="menu-streak">0</span></div>
+        </div>
+
+        <input type="text" id="username-input" placeholder="INGRESA TU NOMBRE" maxlength="12">
+        <button class="btn-cyan" onclick="createRoom()">Crear Sala</button>
+        <p>O</p>
+        <input type="text" id="room-id-input" placeholder="ID DE SALA (Para unirse)">
+        <button onclick="joinRoom()">Unirse a Sala</button>
+    </div>
+
+    <div id="lobby-screen" class="screen">
+        <h2>Lobby de Espera</h2>
+        <p>ID DE SALA: <strong id="lobby-room-id" style="color:var(--neon-cyan); user-select:all;"></strong></p>
+        <div id="qr-container">
+            <img id="qr-code" src="" alt="QR de Sala" width="150" height="150">
+        </div>
+        
+        <h3>Elige tu Equipo</h3>
+        <div class="team-selection">
+            <button class="btn-red" onclick="selectTeam('red')">Equipo Rojo</button>
+            <button class="btn-blue" onclick="selectTeam('blue')">Equipo Azul</button>
+        </div>
+
+        <div class="player-list">
+            <h3>Jugadores Conectados:</h3>
+            <ul id="lobby-players-ul" style="list-style: none; padding: 0;"></ul>
+        </div>
+        <button id="start-game-btn" class="btn-cyan" style="display:none;" onclick="startGame()">Comenzar Batalla</button>
+        <p id="waiting-msg" style="color: var(--neon-pink);">Esperando al Host...</p>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <h2>Área de Batalla</h2>
+        <div id="players-hud"></div>
+
+        <div class="game-controls">
+            <select id="target-selector"></select>
+            <button class="btn-cyan" style="padding: 25px; font-size: 1.5rem;" onclick="chargePower()">⚡ CARGAR FUERZA</button>
+            <button style="padding: 25px; font-size: 1.5rem;" onclick="attackTarget()">⚔️ ATACAR</button>
+        </div>
+
+        <div id="battle-log"></div>
+    </div>
+
+    <div id="end-screen" class="screen">
+        <h1 id="end-title"></h1>
+        <p id="end-message" style="font-size: 1.2rem; margin-bottom: 30px;"></p>
+        
+        <div class="stats-panel" style="flex-direction: column; gap: 10px;">
+            <div>Trofeos Totales: <span id="end-trophies">0</span> <span id="trophy-change" style="font-size: 0.8rem;"></span></div>
+            <div>Racha Actual: <span id="end-streak">0</span></div>
+        </div>
+
+        <button class="btn-cyan" onclick="location.reload()">Volver al Menú</button>
+    </div>
+
+    <script>
+        // --- SISTEMA DE DATOS LOCALES ---
+        let localStats = JSON.parse(localStorage.getItem('rdr_stats')) || { trophies: 0, streak: 0 };
+        
+        function saveStats() {
+            localStorage.setItem('rdr_stats', JSON.stringify(localStats));
+        }
+
+        function updateMenuStats() {
+            document.getElementById('menu-trophies').innerText = localStats.trophies;
+            document.getElementById('menu-streak').innerText = localStats.streak;
+        }
+        updateMenuStats();
+
+        // ESTADO GLOBAL
+        let peer = null;
+        let myId = null;
+        let hostId = null;
+        let myName = "Jugador";
+        let isHost = false;
+        
+        let connections = []; // Host
+        let hostConnection = null; // Clientes
+        let healInterval = null;
+
+        let gameState = {
+            status: "lobby", // lobby, playing, gameover
+            winner: null, // 'red', 'blue', 'draw'
+            players: {},
+            logs: []
+        };
+
+        const screens = {
+            menu: document.getElementById('menu-screen'),
+            lobby: document.getElementById('lobby-screen'),
+            game: document.getElementById('game-screen'),
+            end: document.getElementById('end-screen')
+        };
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            screens[screenName].classList.add('active');
+        }
+
+        function logBattle(msg) {
+            gameState.logs.unshift(msg);
+            if(gameState.logs.length > 15) gameState.logs.pop();
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const logDiv = document.getElementById('battle-log');
+            logDiv.innerHTML = gameState.logs.join('<br>');
+        }
+
+        // --- SISTEMA PEERJS ---
+
+        function initPeer(customId = null) {
+            return new Promise((resolve) => {
+                const p = customId ? new Peer(customId) : new Peer();
+                p.on('open', (id) => {
+                    myId = id;
+                    resolve(p);
+                });
+                p.on('error', (err) => {
+                    alert("Error de conexión: " + err.type);
+                    console.error(err);
+                });
+            });
+        }
+
+        async function createRoom() {
+            const nameInput = document.getElementById('username-input').value.trim();
+            if(nameInput) myName = nameInput;
+
+            const roomId = 'rdr-' + Math.random().toString(36).substr(2, 5);
+            peer = await initPeer(roomId);
+            isHost = true;
+            hostId = myId;
+
+            gameState.players[myId] = { name: myName, health: 100, power: 0, isAlive: true, team: 'blue' };
+
+            peer.on('connection', (conn) => {
+                connections.push(conn);
+                conn.on('data', (data) => handleClientAction(conn.peer, data));
+                conn.on('close', () => {
+                    connections = connections.filter(c => c.peer !== conn.peer);
+                    delete gameState.players[conn.peer];
+                    broadcastState();
+                });
+            });
+
+            setupLobbyUI();
+            document.getElementById('start-game-btn').style.display = "block";
+            document.getElementById('waiting-msg').style.display = "none";
+            showScreen('lobby');
+            updateLobbyUI();
+        }
+
+        async function joinRoom() {
+            const nameInput = document.getElementById('username-input').value.trim();
+            if(nameInput) myName = nameInput;
+
+            const roomToJoin = document.getElementById('room-id-input').value.trim();
+            if(!roomToJoin) return alert("Ingresa un ID de sala.");
+
+            peer = await initPeer();
+            isHost = false;
+            hostId = roomToJoin;
+
+            hostConnection = peer.connect(hostId);
+            
+            hostConnection.on('open', () => {
+                hostConnection.send({ type: 'JOIN', name: myName });
+                showScreen('lobby');
+                setupLobbyUI();
+            });
+
+            hostConnection.on('data', (data) => {
+                if(data.type === 'STATE_UPDATE') {
+                    const oldStatus = gameState.status;
+                    gameState = data.state;
+                    
+                    if(gameState.status === 'lobby') updateLobbyUI();
+                    else if(gameState.status === 'playing') renderGameUI();
+                    else if(gameState.status === 'gameover' && oldStatus !== 'gameover') handleGameOver();
+                }
+            });
+        }
+
+        function selectTeam(teamColor) {
+            if(isHost) {
+                handleClientAction(myId, { type: 'CHANGE_TEAM', team: teamColor });
+            } else {
+                hostConnection.send({ type: 'CHANGE_TEAM', team: teamColor });
+            }
+        }
+
+        // --- LÓGICA DEL HOST ---
+        function handleClientAction(clientId, data) {
+            if (data.type === 'JOIN') {
+                // Asignar equipo por defecto
+                let blueCount = Object.values(gameState.players).filter(p => p.team === 'blue').length;
+                let redCount = Object.values(gameState.players).filter(p => p.team === 'red').length;
+                let autoTeam = redCount < blueCount ? 'red' : 'blue';
+                
+                gameState.players[clientId] = { name: data.name, health: 100, power: 0, isAlive: true, team: autoTeam };
+                broadcastState();
+            }
+            else if (data.type === 'CHANGE_TEAM') {
+                if(gameState.players[clientId]) {
+                    gameState.players[clientId].team = data.team;
+                    broadcastState();
+                }
+            }
+            else if (data.type === 'ACTION_CHARGE') {
+                if(!gameState.players[clientId].isAlive || gameState.status !== 'playing') return;
+                gameState.players[clientId].power = Math.min(100, gameState.players[clientId].power + 15);
+                broadcastState();
+            }
+            else if (data.type === 'ACTION_ATTACK') {
+                processAttack(clientId, data.targetId);
+            }
+        }
+
+        function processAttack(attackerId, targetId) {
+            const attacker = gameState.players[attackerId];
+            const target = gameState.players[targetId];
+
+            if(!attacker.isAlive || !target || !target.isAlive || attacker.power <= 0) return;
+            if(attacker.team === target.team) return; // Validación extra contra fuego amigo
+
+            const damage = attacker.power;
+            target.health -= damage;
+            attacker.power = 0;
+
+            const tColor = target.team === 'red' ? 'var(--neon-red)' : 'var(--neon-blue)';
+            const aColor = attacker.team === 'red' ? 'var(--neon-red)' : 'var(--neon-blue)';
+
+            logBattle(`<span style="color:${aColor}">${attacker.name}</span> atacó a <span style="color:${tColor}">${target.name}</span> por <b>${damage}</b> de daño!`);
+
+            if(target.health <= 0) {
+                target.health = 0;
+                target.isAlive = false;
+                logBattle(`☠️ <span style="color:${tColor}"><b>${target.name}</b></span> fue eliminado.`);
+                checkWinCondition();
+            }
+
+            broadcastState();
+        }
+
+        function checkWinCondition() {
+            const alivePlayers = Object.values(gameState.players).filter(p => p.isAlive);
+            
+            if(alivePlayers.length === 0) {
+                endGame('draw');
+                return;
+            }
+
+            const firstTeamAlive = alivePlayers[0].team;
+            const allSameTeam = alivePlayers.every(p => p.team === firstTeamAlive);
+
+            if(allSameTeam) {
+                endGame(firstTeamAlive);
+            }
+        }
+
+        function endGame(winner) {
+            gameState.status = 'gameover';
+            gameState.winner = winner;
+            clearInterval(healInterval); // Detener curación
+            
+            if(winner === 'draw') logBattle(`🤯 ¡Empate mutuo! Todos murieron.`);
+            else logBattle(`🏆 <b>¡EL EQUIPO ${winner === 'red' ? 'ROJO' : 'AZUL'} HA GANADO!</b>`);
+            
+            broadcastState();
+            if(isHost) handleGameOver(); // El host también debe ejecutar su lógica final
+        }
+
+        function startAutoHeal() {
+            if(!isHost) return;
+            healInterval = setInterval(() => {
+                if (gameState.status === 'playing') {
+                    let healed = false;
+                    for (let id in gameState.players) {
+                        let p = gameState.players[id];
+                        if (p.isAlive && p.health < 100) {
+                            p.health = Math.min(100, p.health + 5);
+                            healed = true;
+                        }
+                    }
+                    if (healed) broadcastState();
+                }
+            }, 3000);
+        }
+
+        function broadcastState() {
+            if(!isHost) return;
+            const data = { type: 'STATE_UPDATE', state: gameState };
+            connections.forEach(conn => conn.send(data));
+            
+            if(gameState.status === 'lobby') updateLobbyUI();
+            if(gameState.status === 'playing') renderGameUI();
+        }
+
+        // --- INTERFAZ ---
+        function setupLobbyUI() {
+            document.getElementById('lobby-room-id').innerText = hostId;
+            document.getElementById('qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${hostId}`;
+        }
+
+        function updateLobbyUI() {
+            const ul = document.getElementById('lobby-players-ul');
+            ul.innerHTML = '';
+            for(let id in gameState.players) {
+                const p = gameState.players[id];
+                const li = document.createElement('li');
+                li.innerHTML = `> ${p.name} ${id === hostId ? '(Host)' : ''}`;
+                li.style.color = p.team === 'red' ? "var(--neon-red)" : "var(--neon-blue)";
+                if(id === myId) li.style.fontWeight = "bold";
+                li.style.marginBottom = "5px";
+                ul.appendChild(li);
+            }
+        }
+
+        function startGame() {
+            const pValues = Object.values(gameState.players);
+            if(pValues.length < 2) return alert("Se necesitan al menos 2 jugadores.");
+            
+            const teams = new Set(pValues.map(p => p.team));
+            if(teams.size < 2) return alert("¡Debe haber jugadores en ambos equipos (Rojo y Azul)!");
+
+            gameState.status = 'playing';
+            logBattle("🔥 ¡La batalla ha comenzado!");
+            broadcastState();
+            startAutoHeal();
+        }
+
+        function renderGameUI() {
+            if(document.getElementById('game-screen').className !== 'screen active') {
+                showScreen('game');
+            }
+
+            const hud = document.getElementById('players-hud');
+            hud.innerHTML = '';
+            
+            const selector = document.getElementById('target-selector');
+            const currentSelection = selector.value;
+            selector.innerHTML = '';
+
+            let myData = gameState.players[myId];
+            let iAmAlive = myData && myData.isAlive;
+            let myTeam = myData ? myData.team : null;
+
+            for(let id in gameState.players) {
+                const p = gameState.players[id];
+                
+                const card = document.createElement('div');
+                card.className = `player-card team-${p.team} ${!p.isAlive ? 'dead' : ''}`;
+                
+                let hpColor = "#00ff00";
+                if(p.health <= 50) hpColor = "#ffff00";
+                if(p.health <= 20) hpColor = "#ff0000";
+
+                card.innerHTML = `
+                    <strong style="color:${id === myId ? 'white' : ''}">${p.name}</strong> ${id===myId?'(Tú)':''} ${!p.isAlive ? '☠️' : ''}
+                    <div class="health-bar-bg"><div class="health-bar-fill" style="width: ${p.health}%; background: ${hpColor};"></div></div>
+                    <div class="power-bar-bg"><div class="power-bar-fill" style="width: ${p.power}%;"></div></div>
+                `;
+                hud.appendChild(card);
+
+                // Llenar selector SOLO con enemigos vivos
+                if(id !== myId && p.isAlive && p.team !== myTeam) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.innerText = p.name;
+                    opt.style.color = p.team === 'red' ? "var(--neon-red)" : "var(--neon-blue)";
+                    selector.appendChild(opt);
+                }
+            }
+
+            if([...selector.options].some(o => o.value === currentSelection)) {
+                selector.value = currentSelection;
+            }
+
+            const btns = document.querySelectorAll('.game-controls button');
+            if(!iAmAlive || gameState.status === 'gameover') {
+                btns.forEach(b => b.disabled = true);
+                selector.disabled = true;
+            } else {
+                btns.forEach(b => b.disabled = false);
+                selector.disabled = selector.options.length === 0; // Deshabilitar si no hay a quien atacar
+            }
+
+            renderLogs();
+        }
+
+        function handleGameOver() {
+            showScreen('end');
+            
+            const myData = gameState.players[myId];
+            const titleEl = document.getElementById('end-title');
+            const msgEl = document.getElementById('end-message');
+            const trophyChangeEl = document.getElementById('trophy-change');
+            
+            let won = (gameState.winner === myData.team);
+            let draw = (gameState.winner === 'draw');
+
+            if(draw) {
+                titleEl.innerText = "EMPATE";
+                titleEl.className = "";
+                msgEl.innerText = "No hubo sobrevivientes.";
+                trophyChangeEl.innerText = "(+0)";
+                localStats.streak = 0;
+            } 
+            else if(won) {
+                titleEl.innerText = "¡VICTORIA!";
+                titleEl.className = "win-text";
+                msgEl.innerText = "Tu equipo ha dominado la arena.";
+                
+                localStats.streak += 1;
+                let gained = 10 + (localStats.streak * 2);
+                localStats.trophies += gained;
+                
+                trophyChangeEl.innerText = `(+${gained} 🏆)`;
+                trophyChangeEl.style.color = "#00ff00";
+            } 
+            else {
+                titleEl.innerText = "DERROTA";
+                titleEl.className = "lose-text";
+                msgEl.innerText = "Tu equipo fue eliminado.";
+                
+                localStats.streak = 0;
+                let lost = 5;
+                localStats.trophies = Math.max(0, localStats.trophies - lost);
+                
+                trophyChangeEl.innerText = `(-${lost} 🏆)`;
+                trophyChangeEl.style.color = "#ff0000";
+            }
+
+            saveStats();
+            document.getElementById('end-trophies').innerText = localStats.trophies;
+            document.getElementById('end-streak').innerText = localStats.streak;
+        }
+
+        // --- ACCIONES DE JUEGO ---
+        function chargePower() {
+            if(gameState.status !== 'playing') return;
+            if(isHost) handleClientAction(myId, { type: 'ACTION_CHARGE' });
+            else hostConnection.send({ type: 'ACTION_CHARGE' });
+        }
+
+        function attackTarget() {
+            if(gameState.status !== 'playing') return;
+            const targetId = document.getElementById('target-selector').value;
+            if(!targetId) return alert("¡No hay objetivos vivos!");
+
+            if(isHost) handleClientAction(myId, { type: 'ACTION_ATTACK', targetId: targetId });
+            else hostConnection.send({ type: 'ACTION_ATTACK', targetId: targetId });
+        }
+    </script>
+</body>
+</html>
